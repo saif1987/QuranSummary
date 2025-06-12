@@ -198,6 +198,19 @@ function renderPage(surahInfo, sections) {
     summaryGridBn.innerHTML = '';
 
     // Prepare for chart rendering
+    const englishToBanglaNumerals = {
+        '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪',
+        '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯'
+    };
+
+    function convertToBanglaNumerals(numberString) {
+        let banglaNumber = '';
+        for (let i = 0; i < numberString.length; i++) {
+            banglaNumber += englishToBanglaNumerals[numberString[i]] || numberString[i];
+        }
+        return banglaNumber;
+    }
+
     const verseCounts = sections.map(s => parseInt(s.ending_verse) - parseInt(s.starting_verse) + 1);
     const maxVerseCount = Math.max(...verseCounts, 1); // Avoid division by zero
 
@@ -209,7 +222,11 @@ function renderPage(surahInfo, sections) {
             <div class="section-name">${section.name_lang}</div>
             <div class="bar-area">
                 <div class="bar" style="width: ${barWidthPercent}%;"></div>
-                <div class="chart-verse-span">[${section.starting_verse}-${section.ending_verse}]</div>
+                <div class="chart-verse-span">[${
+                    section.lang === 'bn' ? convertToBanglaNumerals(String(section.starting_verse)) : section.starting_verse
+                }-${
+                    section.lang === 'bn' ? convertToBanglaNumerals(String(section.ending_verse)) : section.ending_verse
+                }]</div>
             </div>
         `;
         return chartRow;
@@ -234,8 +251,8 @@ function renderPage(surahInfo, sections) {
         const barWidth = (verseCount / maxVerseCount) * 95; // 95% to leave some space
 
         // --- Render Chart Rows ---
-        chartContainerEn.appendChild(createChartRowElement({ ...section, name_lang: section.name_eng }, barWidth));
-        chartContainerBn.appendChild(createChartRowElement({ ...section, name_lang: section.name_bn }, barWidth));
+        chartContainerEn.appendChild(createChartRowElement({ ...section, name_lang: section.name_eng, lang: 'en' }, barWidth));
+        chartContainerBn.appendChild(createChartRowElement({ ...section, name_lang: section.name_bn, lang: 'bn' }, barWidth));
 
         // --- Render Summary Cards ---
         summaryGridEn.appendChild(createSummaryCardElement({ ...section, name_lang: section.name_eng, summary_lang: section.summary_eng }, 'en'));

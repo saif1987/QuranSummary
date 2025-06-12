@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analysis of Surah Al-Baqarah</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;700&family=Noto+Sans:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+
+<div class="language-toggle">
+    <button id="btn-en" class="lang-btn active" data-lang="en">English</button>
+    <button id="btn-bn" class="lang-btn" data-lang="bn">বাংলা</button>
+</div>
+
+<!-- English Content -->
+<div id="content-en" class="content-wrapper active">
+    <div id="chart-container-en" class="chart-container clickable">
+        <h1 id="chart-title-en">Loading...</h1>
+        <!-- Chart rows will be generated here -->
+    </div>
+    <div class="summary-section-container">
+        <h1 id="summary-title-en">Section Summaries</h1>
+        <div id="summary-grid-en" class="summary-grid">
+            <!-- Summary cards will be generated here -->
+        </div>
+    </div>
+</div>
+
+<!-- Bangla Content -->
+<div id="content-bn" class="content-wrapper" lang="bn">
+    <div id="chart-container-bn" class="chart-container clickable">
+         <h1 id="chart-title-bn">লোড হচ্ছে...</h1>
+        <!-- Chart rows will be generated here -->
+    </div>
+    <div class="summary-section-container">
+        <h1 id="summary-title-bn">অংশের সারসংক্ষেপ</h1>
+        <div id="summary-grid-bn" class="summary-grid">
+            <!-- Summary cards will be generated here -->
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div id="popup-modal" class="modal-overlay">
+    <div id="modal-container" class="modal-container">
+        <span id="modal-close-btn" class="modal-close-btn">&times;</span>
+        <div id="modal-content-host"></div>
+        <div class="modal-actions">
+            <button id="save-jpg-btn" class="save-btn">Save as JPG</button>
+        </div>
+    </div>
+</div>
+
+<script src="js/script.js" defer></script>
+
+</body>
+</html>

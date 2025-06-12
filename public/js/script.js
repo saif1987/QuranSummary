@@ -1,4 +1,5 @@
-const SURAH_INDEX = 2; // The index of the surah we want to display
+let currentSurahIndex = 2; // Default Surah, will be dynamic
+let allSurahNamesData = []; // To store all surah names once fetched
 
 // DOM Element Selectors (cached)
 const languageToggle = document.querySelector('.language-toggle');
@@ -11,6 +12,9 @@ const modalContentHost = document.getElementById('modal-content-host');
 const modalCloseButton = document.getElementById('modal-close-btn');
 const saveJpgButton = document.getElementById('save-jpg-btn');
 
+let surahSelectorLabel; // Changed from const to let
+let surahSelector;      // Changed from const to let
+
 const chartTitleEn = document.getElementById('chart-title-en');
 const chartTitleBn = document.getElementById('chart-title-bn');
 const chartContainerEn = document.getElementById('chart-container-en');
@@ -18,6 +22,20 @@ const chartContainerBn = document.getElementById('chart-container-bn');
 const summaryGridEn = document.getElementById('summary-grid-en');
 const summaryGridBn = document.getElementById('summary-grid-bn');
 
+// --- Numeral Conversion (Global Scope) ---
+const englishToBanglaNumerals = {
+    '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪',
+    '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯'
+};
+
+function convertToBanglaNumerals(numberInput) {
+    const numberString = String(numberInput); // Ensure input is a string
+    let banglaNumber = '';
+    for (let i = 0; i < numberString.length; i++) {
+        banglaNumber += englishToBanglaNumerals[numberString[i]] || numberString[i];
+    }
+    return banglaNumber;
+}
 
 function setLanguage(lang) {
     contentWrappers.forEach(wrapper => wrapper.classList.remove('active'));
@@ -27,6 +45,12 @@ function setLanguage(lang) {
     document.getElementById('btn-' + lang).classList.add('active');
 
     document.body.style.fontFamily = lang === 'bn' ? 'var(--font-bn)' : 'var(--font-en)';
+
+    // Update Surah selector label language
+    if (surahSelectorLabel) {
+        surahSelectorLabel.textContent = lang === 'bn' ? 'সূরা নির্বাচন করুন:' : 'Select Surah:';
+    }
+    populateSurahDropdown(lang); // Update dropdown options language and selection
 }
 
 let contentToSave = null;
@@ -138,45 +162,89 @@ function parseCSV(csvText) {
     return rows;
 }
 
-async function loadDataAndRender() {
+async function loadSectionDataAndRender() { // Renamed for clarity
     try {
-        const [sectionsResponse, namesResponse] = await Promise.all([
-            fetch('data/2.csv'), // Updated path
-            fetch('data/surah_name.csv') // Updated path
-        ]);
-
+        // Fetch only the section data for the currentSurahIndex
+        clearPageContent(); // Clear previous content before loading new data
+        const sectionsResponse = await fetch(`data/${currentSurahIndex}.csv`);
+        if (!sectionsResponse.ok) {
+            // Content already cleared by the call above
+            throw new Error(`Failed to fetch section data for Surah ${currentSurahIndex}: ${sectionsResponse.statusText} (status: ${sectionsResponse.status})`);
+        }
         const sectionsText = await sectionsResponse.text();
-        const namesText = await namesResponse.text();
-
-            console.log("Attempting to parse sections CSV data...");
+        console.log(`Attempting to parse sections CSV data for Surah ${currentSurahIndex}...`);
         const sectionsData = parseCSV(sectionsText);
-            if (sectionsData.length > 0) {
-                console.log("Successfully parsed sectionsData:", sectionsData);
-            } else {
-                console.warn("Parsed sectionsData is empty. Check 2.csv format or content.");
-            }
 
-            console.log("Attempting to parse surah names CSV data...");
-        const namesData = parseCSV(namesText);
-            if (namesData.length > 0) {
-                console.log("Successfully parsed namesData:", namesData);
-            } else {
-                console.warn("Parsed namesData is empty. Check surah_name.csv format or content.");
-            }
+        if (sectionsData && sectionsData.length > 0) { // Added null check for sectionsData
+            console.log("Successfully parsed sectionsData:", sectionsData);
+        } else {
+            // Content already cleared
+            console.warn(`Parsed sectionsData for Surah ${currentSurahIndex} is empty. Check ${currentSurahIndex}.csv format or content.`);
+            const currentLang = document.body.style.fontFamily.includes('Bengali') ? 'bn' : 'en'; // More robust lang check
+            const surahNumDisplay = currentLang === 'bn' ? convertToBanglaNumerals(currentSurahIndex) : currentSurahIndex;
+            if(chartTitleEn) chartTitleEn.textContent = `No section data found for Surah ${currentSurahIndex}.`;
+            if(chartTitleBn) chartTitleBn.textContent = `সূরা ${surahNumDisplay} এর জন্য কোন সেকশন ডেটা পাওয়া যায়নি।`;
+            return;
+        }
 
-        const surahInfo = namesData.find(s => parseInt(s.surah_index) === SURAH_INDEX);
+        if (allSurahNamesData.length === 0) {
+            console.error("allSurahNamesData is empty. Cannot find Surah info.");
+            // This case should ideally be handled by the initial fetch in DOMContentLoaded
+            return;
+        }
+
+        const surahInfo = allSurahNamesData.find(s => parseInt(s.surah_index) === currentSurahIndex);
 
         if (!surahInfo) {
-            console.error(`Surah with index ${SURAH_INDEX} not found.`);
+            console.error(`Surah with index ${currentSurahIndex} not found in allSurahNamesData.`);
+            // Content already cleared
+            const currentLang = document.body.style.fontFamily.includes('Bengali') ? 'bn' : 'en';
+            const surahNumDisplay = currentLang === 'bn' ? convertToBanglaNumerals(currentSurahIndex) : currentSurahIndex;
+            if(chartTitleEn) chartTitleEn.textContent = `Surah ${currentSurahIndex} metadata not found.`;
+            if(chartTitleBn) chartTitleBn.textContent = `সূরা ${surahNumDisplay} এর তথ্য পাওয়া যায়নি।`;
             return;
         }
 
         renderPage(surahInfo, sectionsData);
 
     } catch (error) {
+        // Ensure content is cleared on error, though it might have been by the initial call
         console.error("Failed to load or render data:", error);
-        if(chartTitleEn) chartTitleEn.textContent = 'Error loading data.';
-        if(chartTitleBn) chartTitleBn.textContent = 'তথ্য লোড করতে ত্রুটি।';
+        const errorLang = document.body.style.fontFamily.includes('Bengali') ? 'bn' : 'en';
+        const errorIndexText = errorLang === 'bn' ? convertToBanglaNumerals(currentSurahIndex) : currentSurahIndex;
+        if(chartTitleEn) chartTitleEn.textContent = `Error loading data for Surah ${errorIndexText}.`;
+        if(chartTitleBn) chartTitleBn.textContent = `সূরা ${errorIndexText} এর তথ্য লোড করতে ত্রুটি।`;
+    }
+}
+
+function populateSurahDropdown(currentLang) {
+    if (!surahSelector || allSurahNamesData.length === 0) return;
+
+    const previousValue = surahSelector.value; // Preserve selection if possible
+    surahSelector.innerHTML = ''; // Clear existing options
+
+    allSurahNamesData.forEach(surah => {
+        const option = document.createElement('option');
+        option.value = surah.surah_index;
+
+        const indexText = currentLang === 'bn' ? convertToBanglaNumerals(surah.surah_index) : surah.surah_index;
+        const nameText = currentLang === 'bn' ? surah.name_bn : surah.name_eng;
+        option.textContent = `${indexText}. ${nameText}`;
+
+        // Stage 2: Disable option if data file is not available
+        if (!surah.hasDataFile) {
+            option.disabled = true;
+            option.textContent += (currentLang === 'bn' ? ' (ডেটা নেই)' : ' (No Data)');
+        }
+
+        if (parseInt(surah.surah_index) === parseInt(previousValue) || (!previousValue && parseInt(surah.surah_index) === currentSurahIndex)) {
+            option.selected = true;
+        }
+        surahSelector.appendChild(option);
+    });
+    // Ensure the currentSurahIndex is selected if previousValue wasn't matched (e.g., on first load)
+    if (surahSelector.value !== String(currentSurahIndex)) { // Check if current selection is not already the desired one
+        surahSelector.value = String(currentSurahIndex);
     }
 }
 
@@ -186,36 +254,45 @@ function renderPage(surahInfo, sections) {
     document.getElementById('chart-title-bn').textContent = `${surahInfo.name_bn} অংশের বিশ্লেষণ`;
     // Containers are already cached globally (chartContainerEn, chartContainerBn, summaryGridEn, summaryGridBn)
     
-    // Clear existing generated content (but keep titles)
-    const clearContainer = (container) => {
-        while (container.children.length > 1) { // Keep the h1 title
-            container.removeChild(container.lastChild);
+    // The main clearing is now handled by clearPageContent() before this function is called.
+    // This function can assume it's rendering into a relatively clean state (titles might still be there).
+    // However, for robustness, we can still clear the specific dynamic parts within chart containers.
+    const clearDynamicContentInContainer = (container) => {
+        if (!container) return;
+        // Remove all children except the first one (assuming it's the H1 title)
+        // This is a simple way to clear previous rows/cards.
+        while (container.children.length > 1) {
+            // Check if the last child is NOT an H1 before removing.
+            // This is a safeguard in case the H1 isn't the first child or structure changes.
+            if (container.lastChild && container.lastChild.tagName !== 'H1') {
+                container.removeChild(container.lastChild);
+            } else {
+                break; // Stop if only H1 is left or H1 is the last child
+            }
         }
     };
-    clearContainer(chartContainerEn);
-    clearContainer(chartContainerBn);
+
+    if (chartContainerEn) clearDynamicContentInContainer(chartContainerEn);
+    if (chartContainerBn) clearDynamicContentInContainer(chartContainerBn);
+    // Grids don't have a persistent title element within them, so direct clear is fine.
     summaryGridEn.innerHTML = '';
     summaryGridBn.innerHTML = '';
 
     // Prepare for chart rendering
-    const englishToBanglaNumerals = {
-        '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪',
-        '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯'
-    };
+    // Numeral conversion functions are now global
 
-    function convertToBanglaNumerals(numberString) {
-        let banglaNumber = '';
-        for (let i = 0; i < numberString.length; i++) {
-            banglaNumber += englishToBanglaNumerals[numberString[i]] || numberString[i];
-        }
-        return banglaNumber;
+    // Helper for verse range text with language conversion
+    function getVerseRangeText(start, end, lang) {
+        const s = lang === 'bn' ? convertToBanglaNumerals(start) : start;
+        const e = lang === 'bn' ? convertToBanglaNumerals(end) : end;
+        return `[${s}-${e}]`;
     }
 
     const verseCounts = sections.map(s => parseInt(s.ending_verse) - parseInt(s.starting_verse) + 1);
     const maxVerseCount = Math.max(...verseCounts, 1); // Avoid division by zero
 
     // Helper function to create a chart row
-    function createChartRowElement(section, barWidthPercent) {
+    function createChartRowElement(section, barWidthPercent, lang) { // Added lang parameter
         const chartRow = document.createElement('div');
         chartRow.className = 'chart-row';
         chartRow.innerHTML = `
@@ -223,9 +300,9 @@ function renderPage(surahInfo, sections) {
             <div class="bar-area">
                 <div class="bar" style="width: ${barWidthPercent}%;"></div>
                 <div class="chart-verse-span">[${
-                    section.lang === 'bn' ? convertToBanglaNumerals(String(section.starting_verse)) : section.starting_verse
+                    lang === 'bn' ? convertToBanglaNumerals(section.starting_verse) : section.starting_verse
                 }-${
-                    section.lang === 'bn' ? convertToBanglaNumerals(String(section.ending_verse)) : section.ending_verse
+                    lang === 'bn' ? convertToBanglaNumerals(section.ending_verse) : section.ending_verse
                 }]</div>
             </div>
         `;
@@ -237,10 +314,11 @@ function renderPage(surahInfo, sections) {
         const card = document.createElement('div');
         card.id = `summary-${lang}-${section.section_index}`;
         card.className = 'summary-card clickable';
+        const sectionIndexDisplay = lang === 'bn' ? convertToBanglaNumerals(section.section_index) : section.section_index;
         // card.setAttribute('onclick', 'showPopup(event)'); // Replaced by event listener
         card.innerHTML = `
-            <h2>${section.section_index}. ${section.name_lang}</h2>
-            <p class="verse-info">${lang === 'en' ? 'Verses' : 'আয়াত'}: [${section.starting_verse}-${section.ending_verse}]</p>
+            <h2>${sectionIndexDisplay}. ${section.name_lang}</h2>
+            <p class="verse-info">${lang === 'en' ? 'Verses' : 'আয়াত'}: ${getVerseRangeText(section.starting_verse, section.ending_verse, lang)}</p>
             <p>${section.summary_lang}</p>
         `;
         return card;
@@ -251,8 +329,8 @@ function renderPage(surahInfo, sections) {
         const barWidth = (verseCount / maxVerseCount) * 95; // 95% to leave some space
 
         // --- Render Chart Rows ---
-        chartContainerEn.appendChild(createChartRowElement({ ...section, name_lang: section.name_eng, lang: 'en' }, barWidth));
-        chartContainerBn.appendChild(createChartRowElement({ ...section, name_lang: section.name_bn, lang: 'bn' }, barWidth));
+        chartContainerEn.appendChild(createChartRowElement({ ...section, name_lang: section.name_eng }, barWidth, 'en'));
+        chartContainerBn.appendChild(createChartRowElement({ ...section, name_lang: section.name_bn }, barWidth, 'bn'));
 
         // --- Render Summary Cards ---
         summaryGridEn.appendChild(createSummaryCardElement({ ...section, name_lang: section.name_eng, summary_lang: section.summary_eng }, 'en'));
@@ -263,6 +341,28 @@ function renderPage(surahInfo, sections) {
     document.querySelectorAll('.clickable').forEach(element => {
         element.addEventListener('click', showPopup);
     });
+}
+
+function clearPageContent() {
+    // Function to clear a container but attempt to keep its H1 title
+    const clearContainerKeepTitle = (container) => {
+        if (!container) return;
+        while (container.children.length > 1) { // Keep the h1 title
+            // Check if the last child is NOT an H1 before removing.
+            // If the H1 is the only child left, or the last child is H1, stop.
+            if (container.lastChild && container.lastChild.tagName !== 'H1') {
+                container.removeChild(container.lastChild);
+            } else {
+                break; // Stop if only H1 is left or H1 is the last child
+            }
+        }
+    };
+
+    if (chartContainerEn) clearContainerKeepTitle(chartContainerEn);
+    if (chartContainerBn) clearContainerKeepTitle(chartContainerBn);
+    if (summaryGridEn) summaryGridEn.innerHTML = '';
+    if (summaryGridBn) summaryGridBn.innerHTML = '';
+    
 }
 
 // --- Event Listeners ---
@@ -283,6 +383,15 @@ function initializeEventListeners() {
         }
     });
 
+    if (surahSelector) {
+        surahSelector.addEventListener('change', (event) => {
+            const newIndex = parseInt(event.target.value);
+            if (newIndex !== currentSurahIndex) {
+                currentSurahIndex = newIndex;
+                loadSectionDataAndRender(); // Load data for the new surah
+            }
+        });
+    }
     // Initial setup for clickable containers (if they are static and not cleared/re-added)
     // If they are cleared and re-added, listeners should be added after re-creation as done in renderPage.
     // For now, assuming the main containers might be static and their children are dynamic.
@@ -291,8 +400,52 @@ function initializeEventListeners() {
     if(chartContainerBn) chartContainerBn.addEventListener('click', showPopup);
 }
 
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', async function () { // Make async
+    // Initialize dropdown-specific DOM elements here to ensure DOM is ready
+    surahSelectorLabel = document.getElementById('surah-selector-label');
+    surahSelector = document.getElementById('surah-selector');
+
+    try {
+        const namesResponse = await fetch('data/surah_name.csv');
+        if (!namesResponse.ok) {
+            throw new Error(`Failed to fetch surah_name.csv: ${namesResponse.statusText} (status: ${namesResponse.status})`);
+        }
+        const namesText = await namesResponse.text();
+        allSurahNamesData = parseCSV(namesText);
+
+        if (allSurahNamesData.length === 0) {
+            console.warn("Parsed allSurahNamesData is empty. Check surah_name.csv format or content.");
+            // Display a more user-friendly error on the page itself
+            document.body.innerHTML = '<p style="color: red; text-align: center; padding: 2em;">Error: Could not load Surah list. Please check data files and ensure they are accessible.</p>';
+            return; // Stop further execution if critical data is missing
+        }
+        console.log("Successfully loaded and parsed surah_name.csv:", allSurahNamesData);
+
+        // Check availability of section data files for each Surah
+        const availabilityChecks = allSurahNamesData.map(surah =>
+            fetch(`data/${surah.surah_index}.csv`, { method: 'HEAD' }) // HEAD request is efficient
+                .then(response => response.ok) // true if status is 200-299
+                .catch(() => false) // Network error or other issue means not available
+        );
+
+        const availabilityResults = await Promise.all(availabilityChecks);
+        allSurahNamesData.forEach((surah, index) => {
+            surah.hasDataFile = availabilityResults[index];
+            if (!surah.hasDataFile) {
+                console.warn(`Data file for Surah ${surah.surah_index} (${surah.name_eng}) not found or not accessible.`);
+            }
+        });
+        console.log("Surah data file availability checked:", allSurahNamesData);
+
+    } catch (error) {
+        console.error("Failed to load initial surah names data:", error);
+        document.body.innerHTML = `<p style="color: red; text-align: center; padding: 2em;">Critical Error: Could not load initial application data. ${error.message}</p>`;
+        return; // Stop further execution
+    }
+
     initializeEventListeners();
-    loadDataAndRender();
-    setLanguage('en'); // Set default language
+    // Populate dropdown first, then load data, then set language
+    populateSurahDropdown('en'); // Populate with default language (English)
+    await loadSectionDataAndRender(); // Load data for the default Surah
+    setLanguage('en'); // Set default language and ensure UI consistency
 });

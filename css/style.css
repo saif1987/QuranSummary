@@ -167,8 +167,7 @@ h1 {
     box-shadow: 0 5px 15px rgba(0,0,0,0.3);
     display: flex;
     flex-direction: column;
-    overflow-y: auto; /* Allow vertical scrolling if content (host + actions) exceeds set height */
-    overflow-x: hidden; /* Keep horizontal overflow hidden */
+    overflow: hidden; /* Revert: content-host will scroll if needed, container has calculated height */
     transition: all 0.3s ease-in-out;
 }
 .modal-content-host {

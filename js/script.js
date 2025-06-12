@@ -37,12 +37,12 @@ function showPopup(event) {
 
     const rect = sourceElement.getBoundingClientRect();
 
+    // Set position and width based on the clicked element
     modalContainer.style.width = `${rect.width}px`;
-    modalContainer.style.height = `${rect.height}px`;
     modalContainer.style.top = `${rect.top}px`;
     modalContainer.style.left = `${rect.left}px`;
     modalContainer.style.borderRadius = window.getComputedStyle(sourceElement).borderRadius;
-
+    
     const contentClone = sourceElement.cloneNode(true);
     contentClone.classList.remove('clickable');
     // Robustly remove onclick if it exists, though it shouldn't with current HTML
@@ -61,7 +61,21 @@ function showPopup(event) {
 
     modalContentHost.innerHTML = '';
     modalContentHost.appendChild(contentClone);
+
+    // CRITICAL: Make the modal overlay visible *before* attempting to measure
+    // the offsetHeight of its children. Otherwise, offsetHeight will be 0.
     modal.style.display = 'block';
+
+    // Calculate the height needed
+    const modalActionsElement = modalContainer.querySelector('.modal-actions');
+    const actionsHeight = modalActionsElement ? modalActionsElement.offsetHeight : 0;
+    const clonedContentHeight = contentClone.offsetHeight; // Height of the actual cloned content
+
+    // Optional: Log the calculated heights for debugging
+    // console.log(`actionsHeight: ${actionsHeight}, clonedContentHeight: ${clonedContentHeight}`);
+
+    modalContainer.style.height = `${clonedContentHeight + actionsHeight}px`;
+
 }
 
 function closePopup(event) {

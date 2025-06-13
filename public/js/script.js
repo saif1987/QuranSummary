@@ -251,7 +251,7 @@ function populateSurahDropdown(currentLang) {
 function renderPage(surahInfo, sections) {
     // Render titles
     document.getElementById('chart-title-en').textContent = `Analysis of ${surahInfo.name_eng} Sections`;
-    document.getElementById('chart-title-bn').textContent = `${surahInfo.name_bn} অংশের বিশ্লেষণ`;
+    document.getElementById('chart-title-bn').textContent = `${surahInfo.name_bn} অংশের বিভাজন`;
     // Containers are already cached globally (chartContainerEn, chartContainerBn, summaryGridEn, summaryGridBn)
     
     // The main clearing is now handled by clearPageContent() before this function is called.
